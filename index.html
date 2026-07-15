@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hausa ⇄ English</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+<div class="weave"></div>
+
+<header class="top">
+  <div class="brand">
+    <div class="brand-text">
+      <img src="/assets/logo.svg" alt="" class="logo-mark" width="48" height="48">
+      <div>
+        <h1 class="display">Hausa <span class="accent">⇄</span> English</h1>
+        <p>Weaving words between two tongues, one entry at a time.</p>
+      </div>
+    </div>
+
+    <div class="session-area" id="sessionArea"></div>
+  </div>
+
+  <nav class="tabs" id="navTabs">
+    <a href="/index.html" class="active">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M3 5h9M7.5 3v2M4 9c1 3 3 5 6 6M11 9c-1.5 4-4 6.5-8 8"/><path d="M14 20l4-9 4 9M15.3 17h5.4"/></svg>
+      Translate
+    </a>
+    <a href="/admin_login.php">
+      <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      Admin
+    </a>
+    <a href="/contributor_auth.php">
+      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+      Contributor
+    </a>
+  </nav>
+</header>
+
+<main>
+  <section class="grid">
+    <div class="panel">
+      <h2>Dataset</h2>
+      <div class="stat-row"><span>Entries</span><span class="val" id="statCount">—</span></div>
+      <div class="stat-row"><span>Last updated</span><span class="val" id="statUpdated">—</span></div>
+
+      <h2 style="margin-top:20px">Browse dictionary</h2>
+      <input type="text" id="searchBox" placeholder="Search a word…">
+      <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Translate</h2>
+      <textarea id="inputText" placeholder="Type a Hausa word or sentence…"></textarea>
+      <button class="btn" id="translateBtn">Translate</button>
+      <div id="resultArea"></div>
+    </div>
+  </section>
+</main>
+
+<footer class="note">Under Supervision of <strong>Mr. MMMM</strong>, development by <strong>IB Sallau</strong>.</footer>
+
+<script src="/assets/js/app.js"></script>
+<script>
+  // This page is static HTML, so login state and dataset stats are fetched
+  // from the PHP APIs at runtime instead of being rendered server-side.
+  (function () {
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function iconSvg(name) {
+      const icons = {
+        lock: '<svg class="icon" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>',
+        plus: '<svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+      };
+      return icons[name] || '';
+    }
+
+    async function loadSession() {
+      try {
+        const res = await fetch('/api/session.php');
+        const data = await res.json();
+        const sessionArea = document.getElementById('sessionArea');
+        const navTabs = document.getElementById('navTabs');
+
+        if (!data.loggedIn) return; // default markup already shows logged-out nav
+
+        if (data.role === 'admin') {
+          sessionArea.innerHTML = `
+            <div class="session-pill">
+              <span class="role-tag admin">Admin</span> ${escapeHtml(data.username)}
+              <a class="btn ghost small" href="/logout.php">Log out</a>
+            </div>`;
+          navTabs.innerHTML = `
+            <a href="/index.html" class="active">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M3 5h9M7.5 3v2M4 9c1 3 3 5 6 6M11 9c-1.5 4-4 6.5-8 8"/><path d="M14 20l4-9 4 9M15.3 17h5.4"/></svg>
+              Translate
+            </a>
+            <a href="/admin/dashboard.php">${iconSvg('lock')}Dashboard</a>`;
+        } else {
+          sessionArea.innerHTML = `
+            <div class="session-pill">
+              <span class="role-tag contributor">Contributor</span> ${escapeHtml(data.username)}
+              <a class="btn ghost small" href="/logout.php">Log out</a>
+            </div>`;
+          navTabs.innerHTML = `
+            <a href="/index.html" class="active">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M3 5h9M7.5 3v2M4 9c1 3 3 5 6 6M11 9c-1.5 4-4 6.5-8 8"/><path d="M14 20l4-9 4 9M15.3 17h5.4"/></svg>
+              Translate
+            </a>
+            <a href="/contributor/add_word.php">${iconSvg('plus')}Add word</a>`;
+        }
+      } catch (e) {
+        // If the API isn't reachable, the page still works fine logged-out.
+      }
+    }
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/stats.php');
+        const data = await res.json();
+        document.getElementById('statCount').textContent = (data.count || 0).toLocaleString();
+        document.getElementById('statUpdated').textContent = data.updatedAt
+          ? new Date(data.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+          : '—';
+      } catch (e) {
+        document.getElementById('statCount').textContent = '0';
+      }
+    }
+
+    loadSession();
+    loadStats();
+  })();
+</script>
+
+</body>
+</html>
